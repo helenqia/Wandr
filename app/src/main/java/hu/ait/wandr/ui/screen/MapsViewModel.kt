@@ -1,6 +1,7 @@
 package hu.ait.wandr.ui.screen
 
 import android.location.Location
+import android.net.Uri
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -11,25 +12,23 @@ import hu.ait.wandr.location.LocationManager
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-
 @HiltViewModel
 class MapsViewModel @Inject constructor(
     val locationManager: LocationManager
-): ViewModel() {
+) : ViewModel() {
 
-    // --- Maps related
-    private var _markerPositionList =
-        mutableStateListOf<LatLng>()
+    // Now storing LatLng + note + optional photoUri
+    private var _markerList = mutableStateListOf<Triple<LatLng, String, Uri?>>()
 
-    fun getMarkersList(): List<LatLng> {
-        return _markerPositionList
+    fun getMarkersList(): List<Triple<LatLng, String, Uri?>> {
+        return _markerList
     }
 
-    fun addMarkerPosition(latLng: LatLng) {
-        _markerPositionList.add(latLng)
+    fun addMarker(latLng: LatLng, note: String, photoUri: Uri?) {
+        _markerList.add(Triple(latLng, note, photoUri))
     }
 
-    // --- Location monitoring related
+    // Location monitoring
     var locationState = mutableStateOf<Location?>(null)
 
     fun startLocationMonitoring() {
@@ -37,11 +36,8 @@ class MapsViewModel @Inject constructor(
             locationManager
                 .fetchUpdates()
                 .collect {
-                    //addMarkerPosition(LatLng(it.latitude,it.longitude))
                     locationState.value = it
                 }
         }
     }
-
-
 }
