@@ -20,6 +20,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        manifestPlaceholders["WEATHER_API_KEY"] = project.properties["WEATHER_API_KEY"] ?: ""
+
     }
 
     buildTypes {
