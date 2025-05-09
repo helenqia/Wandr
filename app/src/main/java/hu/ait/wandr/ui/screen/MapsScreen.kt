@@ -1,6 +1,7 @@
 package hu.ait.wandr.ui.screen
 
 import android.Manifest
+import android.content.Context
 import android.location.Address
 import android.location.Geocoder
 import android.location.Location
@@ -29,6 +30,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.google.android.gms.maps.CameraUpdateFactory
 import hu.ait.wandr.R
+import hu.ait.wandr.data.TravelPin
 import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.Random
@@ -49,12 +51,14 @@ fun MapsScreen(
     var mapProperties by remember {
         mutableStateOf(
             MapProperties(
-                mapType = MapType.SATELLITE,
+                mapType = MapType.NORMAL,
                 isTrafficEnabled = true,
-                mapStyleOptions = MapStyleOptions.loadRawResourceStyle(context, R.raw.mymapconfig)
+                //mapStyleOptions = MapStyleOptions.loadRawResourceStyle(context, R.raw.mymapconfig)
             )
         )
     }
+    var addressText by rememberSaveable { mutableStateOf("N/A") }
+    Text(text = addressText)
 
     var clickedLocation by remember { mutableStateOf<LatLng?>(null) }
     var showDialog by remember { mutableStateOf(false) }
@@ -72,48 +76,16 @@ fun MapsScreen(
     )
 
     Column(modifier = modifier.fillMaxSize()) {
-        val fineLocationPermissionState = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
-
-        if (fineLocationPermissionState.status.isGranted) {
-            Column {
-                Button(onClick = { mapsViewModel.startLocationMonitoring() }) {
-                    Text(text = "Start location monitoring")
-                }
-                Text(text = "Location: ${getLocationText(mapsViewModel.locationState.value)}")
-            }
-        } else {
-            val permissionText = if (fineLocationPermissionState.status.shouldShowRationale) {
-                "Please consider giving permission"
-            } else {
-                "Give permission for location"
-            }
-            Text(text = permissionText)
-            Button(onClick = { fineLocationPermissionState.launchPermissionRequest() }) {
-                Text(text = "Request permission")
-            }
-        }
-
-        var isSatellite by remember { mutableStateOf(true) }
-        Switch(
-            checked = isSatellite,
-            onCheckedChange = {
-                isSatellite = it
-                mapProperties = mapProperties.copy(mapType = if (it) MapType.SATELLITE else MapType.NORMAL)
-            }
-        )
-
-        var addressText by rememberSaveable { mutableStateOf("N/A") }
-        Text(text = addressText)
+        //permission?
 
         GoogleMap(
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.5f),
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(),
             cameraPositionState = cameraState,
             uiSettings = uiSettings,
             properties = mapProperties,
             onMapClick = { clickCoordinate ->
                 clickedLocation = clickCoordinate
                 addressResult = "Loading address..."
-
                 val geocoder = Geocoder(context, Locale.getDefault())
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     geocoder.getFromLocation(
@@ -137,30 +109,10 @@ fun MapsScreen(
                         addressResult = "Error: ${e.message}"
                     }
                 }
-
                 showDialog = true
-            },
-            onMapLongClick = { clickCoordinate ->
-                val random = Random(System.currentTimeMillis())
-                val cameraPosition = CameraPosition.Builder()
-                    .target(clickCoordinate)
-                    .zoom(1f + random.nextInt(5))
-                    .tilt(30f + random.nextInt(15))
-                    .bearing(-45f + random.nextInt(90))
-                    .build()
-                coroutineScope.launch {
-                    cameraState.animate(CameraUpdateFactory.newCameraPosition(cameraPosition), 3000)
-                }
             }
+            //rest?
         ) {
-            Marker(
-                state = MarkerState(position = LatLng(47.0, 19.0)),
-                title = "Marker AIT",
-                snippet = "Marker long text, lorem ipsum...",
-                draggable = true,
-                alpha = 0.5f
-            )
-
             for ((position, note, markerPhotoUri) in mapsViewModel.getMarkersList()) {
                 Marker(
                     state = MarkerState(position = position),
@@ -225,7 +177,7 @@ fun MapsScreen(
                 },
                 confirmButton = {
                     Button(onClick = {
-                        mapsViewModel.addMarker(clickedLocation!!, noteText, photoUri)
+                        mapsViewModel.startCompareNewPin(clickedLocation!!, noteText, photoUri)
                         showDialog = false
                         noteText = ""
                         addressResult = null
@@ -247,31 +199,61 @@ fun MapsScreen(
             )
         }
 
-        if (showPhotoDialog && selectedPhotoUri != null) {
-            AlertDialog(
-                onDismissRequest = { showPhotoDialog = false },
-                title = { Text("Attached Photo") },
-                text = {
-                    AsyncImage(
-                        model = selectedPhotoUri,
-                        contentDescription = "Attached photo",
-                        modifier = Modifier.fillMaxWidth().height(200.dp)
-                    )
-                },
-                confirmButton = {
-                    Button(onClick = { showPhotoDialog = false }) { Text("Close") }
-                }
-            )
+        val newPinForCompare = mapsViewModel.newPinForComparison.value
+        if (newPinForCompare != null) {
+            val candidate = mapsViewModel.getCurrentComparisonCandidate()
+            if (candidate != null) {
+                CompareDialog(
+                    newPin = newPinForCompare,
+                    currentComparison = candidate,
+                    onDecision = { isBetter ->
+                        mapsViewModel.handleComparisonDecision(isBetter)
+                    },
+                    onDismiss = {
+                        // insert or cancel the newPin if hit cancel,-> mapsViewModel.cancelComparison()?
+                        // currently clear the newPin
+                    }
+                )
+            }
         }
+
+        // rest?
     }
 }
 
-fun getLocationText(location: Location?): String {
-    return """
-       Lat: ${location?.latitude}
-       Lng: ${location?.longitude}
-       Alt: ${location?.altitude}
-       Speed: ${location?.speed}
-       Accuracy: ${location?.accuracy}
-    """.trimIndent()
+@Composable
+fun CompareDialog(
+    newPin: TravelPin,
+    currentComparison: TravelPin,
+    onDecision: (isBetter: Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Compare Places") },
+        text = {
+            Column {
+                Text("Is your new place better than:")
+                Spacer(Modifier.height(8.dp))
+                // For example, you might show the note of the candidate:
+                Text(
+                    currentComparison.note,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onDecision(true) }) {
+                Text("Better")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onDecision(false) }) {
+                Text("Worse")
+            }
+        }
+    )
 }
+

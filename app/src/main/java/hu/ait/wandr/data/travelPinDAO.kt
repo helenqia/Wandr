@@ -30,4 +30,7 @@ interface TravelPinDao {
 
     @Query("SELECT * FROM TravelPin ORDER BY RANDOM() LIMIT 2")
     suspend fun getRandomPairForComparison(): List<TravelPin>
+
+    @Query("DELETE FROM TravelPin")
+    suspend fun deleteAllPins()
 }

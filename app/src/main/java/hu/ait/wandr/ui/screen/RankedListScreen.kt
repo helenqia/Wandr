@@ -88,7 +88,6 @@ fun RankedPlaceItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Rank circle
             Surface(
                 modifier = Modifier
                     .size(40.dp),
