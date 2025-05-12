@@ -7,10 +7,15 @@ import android.location.Geocoder
 import android.location.Location
 import android.net.Uri
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -32,9 +37,13 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import hu.ait.wandr.R
 import hu.ait.wandr.data.TravelPin
 import hu.ait.wandr.ui.utils.getLocationNameFromCoordinates
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.Random
+import androidx.compose.ui.text.input.ImeAction
+
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -76,8 +85,53 @@ fun MapsScreen(
         onResult = { uri -> photoUri = uri }
     )
 
+    //TEST SEARCH FEATURE
+    var searchQuery by remember { mutableStateOf("") }
+
     Column(modifier = modifier.fillMaxSize()) {
         //permission?
+
+        //TEST SEARCH FEATURE
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search location") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions.Default.copy(
+                imeAction = ImeAction.Search
+            ),
+
+            keyboardActions = KeyboardActions(
+                onSearch = {
+                    performSearch(
+                        searchQuery,
+                        context,
+                        cameraState,
+                        { clickedLocation = it },
+                        { addressResult = it },
+                        { showDialog = it }
+                    )
+                }
+            ),
+            trailingIcon = {
+                IconButton(onClick = {
+                    performSearch(
+                        searchQuery,
+                        context,
+                        cameraState,
+                        { clickedLocation = it },
+                        { addressResult = it },
+                        { showDialog = it }
+                    )
+                }) {
+                    Icon(Icons.Default.Search, contentDescription = "Search")
+                }
+            }
+        )
+
 
         GoogleMap(
             modifier = Modifier.fillMaxWidth().fillMaxHeight(),
@@ -262,6 +316,46 @@ fun CompareDialog(
         }
     )
 }
+
+//TEST SEARCH FEATURE
+fun performSearch(
+    query: String,
+    context: Context,
+    cameraState: CameraPositionState,
+    setClickedLocation: (LatLng) -> Unit,
+    setAddressResult: (String) -> Unit,
+    setShowDialog: (Boolean) -> Unit
+) {
+    val geocoder = Geocoder(context, Locale.getDefault())
+
+    try {
+        val addressList = geocoder.getFromLocationName(query, 1)
+        if (!addressList.isNullOrEmpty()) {
+            val address = addressList[0]
+            val latLng = LatLng(address.latitude, address.longitude)
+
+            // Animate camera
+            CoroutineScope(Dispatchers.Main).launch {
+                cameraState.animate(
+                    update = CameraUpdateFactory.newLatLngZoom(latLng, 15f),
+                    durationMs = 2000
+                )
+            }
+
+            // Trigger the same flow as map click
+            setClickedLocation(latLng)
+            setAddressResult(address.getAddressLine(0))
+            setShowDialog(true)
+
+        } else {
+            Toast.makeText(context, "Location not found", Toast.LENGTH_SHORT).show()
+        }
+    } catch (e: Exception) {
+        Toast.makeText(context, "Search error: ${e.message}", Toast.LENGTH_SHORT).show()
+    }
+}
+
+
 
 
 
