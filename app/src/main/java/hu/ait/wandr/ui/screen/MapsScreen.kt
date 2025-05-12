@@ -67,7 +67,7 @@ fun MapsScreen(
             )
         )
     }
-    var addressText by rememberSaveable { mutableStateOf("N/A") }
+    var addressText by rememberSaveable { mutableStateOf("") }
     Text(text = addressText)
 
     var clickedLocation by remember { mutableStateOf<LatLng?>(null) }
