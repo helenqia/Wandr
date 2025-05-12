@@ -27,4 +27,12 @@ class RankingViewModel @Inject constructor(
             }
         }
     }
+
+    fun deletePin(pin: TravelPin) {
+        viewModelScope.launch {
+            travelRepository.deletePin(pin)
+        }
+    }
+
+
 }

@@ -48,6 +48,8 @@ class MapsViewModel @Inject constructor(
     private val _compareLow = mutableStateOf(0)
     private val _compareHigh = mutableStateOf(0)
 
+    private val _currentMid = mutableStateOf(0)
+
     fun startCompareNewPin(latLng: LatLng, note: String, photoUri: Uri?) {
 
         val newPin = TravelPin(
@@ -65,7 +67,8 @@ class MapsViewModel @Inject constructor(
             insertNewPinAndClear(newPin)
         } else {
             _compareLow.value = 0
-            _compareHigh.value = currentPins.size
+            _compareHigh.value = currentPins.size - 1
+            _currentMid.value = (0 + (currentPins.size - 1)) / 2
         }
     }
 
@@ -76,28 +79,31 @@ class MapsViewModel @Inject constructor(
         val low = _compareLow.value
         val high = _compareHigh.value
         // Choose the middle candidate.
-        val mid = (low + high) / 2
+        val mid = _currentMid.value
         return pins.getOrNull(mid)
     }
 
     // doesn't work- need to fix
     fun handleComparisonDecision(isBetter: Boolean) {
         val newPin = _newPinForComparison.value ?: return
-        val pins = _allPins.value
-        var low = _compareLow.value
-        var high = _compareHigh.value
-        val mid = (low + high) / 2
+        /*val pins = _allPins.value
+        val low = _compareLow.value
+        val high = _compareHigh.value*/
+        val mid = _currentMid.value
 
         if (isBetter) {
-            high = mid - 1
+            _compareHigh.value = mid - 1
         } else {
-            low = mid + 1
+            _compareLow.value = mid + 1
         }
-        _compareLow.value = low
-        _compareHigh.value = high
 
-        if (low > high) {
+        val newLow = _compareLow.value
+        val newHigh = _compareHigh.value
+
+        if (newLow > newHigh) {
             insertNewPinAndClear(newPin)
+        } else {
+            _currentMid.value = (newLow + newHigh) / 2
         }
     }
 
