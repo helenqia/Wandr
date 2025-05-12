@@ -31,6 +31,7 @@ import com.google.accompanist.permissions.shouldShowRationale
 import com.google.android.gms.maps.CameraUpdateFactory
 import hu.ait.wandr.R
 import hu.ait.wandr.data.TravelPin
+import hu.ait.wandr.ui.utils.getLocationNameFromCoordinates
 import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.Random
@@ -228,6 +229,12 @@ fun CompareDialog(
     onDecision: (isBetter: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+
+    val currentLocationName = remember(currentComparison) {
+        getLocationNameFromCoordinates(context, currentComparison.latitude, currentComparison.longitude)
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Compare Places") },
@@ -235,9 +242,8 @@ fun CompareDialog(
             Column {
                 Text("Is your new place better than:")
                 Spacer(Modifier.height(8.dp))
-                // For example, you might show the note of the candidate:
                 Text(
-                    currentComparison.note,
+                    currentLocationName,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(8.dp)
@@ -256,4 +262,6 @@ fun CompareDialog(
         }
     )
 }
+
+
 

@@ -9,6 +9,6 @@ data class TravelPin(
     val latitude: Double,
     val longitude: Double,
     val note: String,
-    val rating: Int,
+    var rating: Int,
     val photoUri: String?
 )

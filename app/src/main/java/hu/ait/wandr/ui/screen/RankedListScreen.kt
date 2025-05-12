@@ -28,6 +28,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.google.android.gms.maps.model.LatLng
 import hu.ait.wandr.data.TravelPin
+import hu.ait.wandr.ui.utils.getLocationNameFromCoordinates
 import java.util.Locale
 
 @Composable
@@ -82,22 +83,6 @@ fun RankedListScreen(
         }
     }
 }
-
-fun getLocationNameFromCoordinates(context: Context, latitude: Double, longitude: Double): String {
-    return try {
-        val geocoder = Geocoder(context, Locale.getDefault())
-        val addresses = geocoder.getFromLocation(latitude, longitude, 1)
-        if (addresses != null && addresses.isNotEmpty()) {
-            addresses[0].getAddressLine(0) ?: "Unknown Location"
-        } else {
-            "Unknown Location"
-        }
-    } catch (e: Exception) {
-        "Location unavailable"
-    }
-}
-
-
 
 @Composable
 fun RankedPlaceItem(

@@ -36,7 +36,7 @@ class MapsViewModel @Inject constructor(
                 travelRepository.deleteAllPins()
             }
 
-            travelRepository.getAllPinsAsFlow().collect { pins ->
+            travelRepository.getAllPinsRankedAsFlow().collect { pins ->
                 _allPins.value = pins
             }
         }
@@ -86,15 +86,16 @@ class MapsViewModel @Inject constructor(
     // doesn't work- need to fix
     fun handleComparisonDecision(isBetter: Boolean) {
         val newPin = _newPinForComparison.value ?: return
-        /*val pins = _allPins.value
-        val low = _compareLow.value
-        val high = _compareHigh.value*/
         val mid = _currentMid.value
+        val pins = _allPins.value
+        val midRating = pins[mid].rating
 
         if (isBetter) {
             _compareHigh.value = mid - 1
+            newPin.rating = midRating + 1
         } else {
             _compareLow.value = mid + 1
+            newPin.rating = midRating - 1
         }
 
         val newLow = _compareLow.value
@@ -109,12 +110,28 @@ class MapsViewModel @Inject constructor(
 
     private fun insertNewPinAndClear(newPin: TravelPin) {
         viewModelScope.launch {
+            val insertIndex = _compareLow.value
+            val pins = _allPins.value.sortedByDescending { it.rating } // enforce sorted order
+
+            val newRating = when {
+                pins.isEmpty() -> 1200
+                insertIndex == 0 -> pins.first().rating + 100 // ensure it's higher than highest
+                insertIndex >= pins.size -> pins.last().rating - 100 // lower than lowest
+                else -> {
+                    val high = pins[insertIndex - 1].rating
+                    val low = pins[insertIndex].rating
+                    (high + low) / 2
+                }
+            }
+
+            newPin.rating = newRating
             travelRepository.insertTravelPin(newPin)
             _newPinForComparison.value = null
         }
     }
 
-    fun getLocationName(context: Context, latLng: LatLng): String {
+
+    /*fun getLocationName(context: Context, latLng: LatLng): String {
         val geocoder = Geocoder(context, Locale.getDefault())
         return try {
             val addressList = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
@@ -127,7 +144,7 @@ class MapsViewModel @Inject constructor(
         } catch (e: Exception) {
             "Unknown Location"
         }
-    }
+    }*/
 
     //var locationState = mutableStateOf<Location?>(null)
 
