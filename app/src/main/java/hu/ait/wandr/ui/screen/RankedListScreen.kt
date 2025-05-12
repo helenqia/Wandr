@@ -3,6 +3,7 @@ package hu.ait.wandr.ui.screen
 import android.content.Context
 import android.location.Geocoder
 import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.google.android.gms.maps.model.LatLng
 import hu.ait.wandr.data.TravelPin
@@ -34,7 +36,8 @@ import java.util.Locale
 @Composable
 fun RankedListScreen(
     modifier: Modifier = Modifier,
-    rankingViewModel: RankingViewModel = hiltViewModel()
+    rankingViewModel: RankingViewModel = hiltViewModel(),
+    navController: NavController
 ) {
     val rankedPlaces by rankingViewModel.rankedPlaces.collectAsState()
     var clickedLocation by remember { mutableStateOf<LatLng?>(null) }
@@ -64,6 +67,9 @@ fun RankedListScreen(
                             rank = index + 1,
                             place = place,
                             onDelete = { rankingViewModel.deletePin(it) },
+                            onClick = {
+                                navController.navigate("pin_detail/$index")
+                            },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -89,18 +95,21 @@ fun RankedPlaceItem(
     rank: Int,
     place: TravelPin,
     onDelete: (TravelPin) -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
-) {
+)
+ {
     val context = LocalContext.current
     val locationName by remember(place.latitude, place.longitude) {
         mutableStateOf(
             getLocationNameFromCoordinates(context, place.latitude, place.longitude)
         )
     }
-    Card(
-        modifier = modifier,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
+     Card(
+         modifier = modifier.clickable { onClick() },
+         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+     )
+     {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
